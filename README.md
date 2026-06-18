@@ -30,6 +30,27 @@ For reflected XSS: test URLs inject a payload into one query parameter at a time
 
 For stored XSS: copy individual payloads from the library and submit them through the application's forms or APIs manually, then revisit the page where the data is rendered.
 
+## v2.0 — HTTP Parameter Pollution Scanner
+
+### Features
+
+- **HPP Scanner** — tests how your application handles duplicate query parameters across 6 pollution strategies. Set a recognisable inject value, generate test URLs, open each in a browser, and mark whether the injected value was used by the application.
+
+### Pollution strategies
+
+| Strategy | What it tests |
+|---|---|
+| Append duplicate | `?p=original&p=INJECT` — does the backend use the last value? |
+| Prepend duplicate | `?p=INJECT&p=original` — does the backend use the first value? |
+| Array bracket notation | `?p[]=original&p[]=INJECT` — PHP/Rails array parsing |
+| Comma-separated values | `?p=original,INJECT` — frameworks that split on comma |
+| Semicolon-separated values | `?p=original;INJECT` — legacy Java/JSP delimiter handling |
+| Encoded ampersand injection | `?p=original%26p=INJECT` — double-decode bypass via reverse proxies or WAFs |
+
+### How it works
+
+Set the inject value to a unique probe string (default: `HPP_INJECTED`). The scanner generates one test URL per parameter × strategy combination. Open each URL in your app and check whether the injected value appears in the response, logs, or application behaviour — if it does, that parameter is vulnerable to pollution for that strategy.
+
 ## Stack
 
 - React 18 + Vite 8 + TypeScript

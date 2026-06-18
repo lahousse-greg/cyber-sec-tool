@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { ShieldAlert, Code2, BookOpen } from 'lucide-react'
+import { ShieldAlert, Code2, BookOpen, Layers } from 'lucide-react'
 
 export default function Layout() {
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -22,6 +22,10 @@ export default function Layout() {
             <NavLink to="/scanner" className={navClass}>
               <Code2 size={15} />
               XSS Scanner
+            </NavLink>
+            <NavLink to="/hpp" className={navClass}>
+              <Layers size={15} />
+              HPP Scanner
             </NavLink>
             <NavLink to="/payloads" className={navClass}>
               <BookOpen size={15} />
