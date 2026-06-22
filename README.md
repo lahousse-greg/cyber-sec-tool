@@ -51,6 +51,29 @@ For stored XSS: copy individual payloads from the library and submit them throug
 
 Set the inject value to a unique probe string (default: `HPP_INJECTED`). The scanner generates one test URL per parameter × strategy combination. Open each URL in your app and check whether the injected value appears in the response, logs, or application behaviour — if it does, that parameter is vulnerable to pollution for that strategy.
 
+## v3.0 — SQL Injection Scanner
+
+### Features
+
+- **SQLi Scanner** — injects SQL payloads into query parameters across 6 technique categories, generates ready-to-open test URLs, and lets you mark each result as Vulnerable / Not vulnerable / Error.
+
+### Payload categories
+
+| Category | What it tests |
+|---|---|
+| Error-Based | Trigger DB syntax/type errors that leak version, schema, or query structure |
+| Boolean-Based | True/false conditions that change response content — confirms injection without errors |
+| Time-Based Blind | `SLEEP` / `WAITFOR` / `pg_sleep` — infer injection by measuring response delay |
+| UNION-Based | Column-count probing and data extraction via `UNION SELECT` |
+| Comment Injection | `--`, `#`, `/*` — truncate queries; includes login bypass variants |
+| Stacked Queries | Semicolon-separated statements — tests whether the driver allows multiple queries |
+
+### How it works
+
+Because the tool is client-side, it cannot read your app's HTTP responses. Instead, it constructs payload-injected URLs that you open in a browser tab and inspect manually. Each test case includes a **"what to observe"** note — typically a DB error message, a content difference between true/false conditions, or a time delay.
+
+For time-based payloads: open the test URL, note the response time, then compare against a baseline request with the original parameter value.
+
 ## Stack
 
 - React 18 + Vite 8 + TypeScript
@@ -63,8 +86,6 @@ Set the inject value to a unique probe string (default: `HPP_INJECTED`). The sca
 npm install
 npm run dev
 ```
-
-App runs at `http://localhost:5173`.
 
 ```bash
 npm run build   # production build → dist/

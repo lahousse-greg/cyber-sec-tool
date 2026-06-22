@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import XSSScanner from './pages/XSSScanner'
 import PayloadLibrary from './pages/PayloadLibrary'
 import HPPScanner from './pages/HPPScanner'
+import SQLiScanner from './pages/SQLiScanner'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
           <Route index element={<Navigate to="/scanner" replace />} />
           <Route path="scanner" element={<XSSScanner />} />
           <Route path="hpp" element={<HPPScanner />} />
+          <Route path="sqli" element={<SQLiScanner />} />
           <Route path="payloads" element={<PayloadLibrary />} />
         </Route>
       </Routes>
