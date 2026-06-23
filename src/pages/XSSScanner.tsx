@@ -55,6 +55,11 @@ export default function XSSScanner() {
   // Field targets
   const [fields, setFields] = useState<TargetField[]>([newField()])
 
+  // Mode toggles
+  const [activeMode, setActiveMode] = useState<'url' | 'field' | null>('url')
+  const urlEnabled = activeMode === 'url'
+  const fieldsEnabled = activeMode === 'field'
+
   // Shared
   const [selectedCategories, setSelectedCategories] = useState<Set<PayloadCategory>>(new Set(ALL_CATEGORIES))
   const [testCases, setTestCases] = useState<TestCase[]>([])
@@ -127,8 +132,8 @@ export default function XSSScanner() {
   }
 
   const generateTestCases = () => {
-    const hasURLParams = parsedBase && selectedParams.size > 0
-    const activeFields = fields.filter(f => f.name.trim() !== '')
+    const hasURLParams = urlEnabled && parsedBase && selectedParams.size > 0
+    const activeFields = fieldsEnabled ? fields.filter(f => f.name.trim() !== '') : []
     if ((!hasURLParams && activeFields.length === 0) || selectedCategories.size === 0) return
 
     const filteredPayloads = XSS_PAYLOADS.filter(p => selectedCategories.has(p.category))
@@ -177,13 +182,13 @@ export default function XSSScanner() {
 
   const activeFields = fields.filter(f => f.name.trim() !== '')
   const filteredPayloadCount = XSS_PAYLOADS.filter(p => selectedCategories.has(p.category)).length
-  const urlCaseCount = parsedBase ? selectedParams.size * filteredPayloadCount : 0
-  const fieldCaseCount = activeFields.length * filteredPayloadCount
+  const urlCaseCount = urlEnabled && parsedBase ? selectedParams.size * filteredPayloadCount : 0
+  const fieldCaseCount = fieldsEnabled ? activeFields.length * filteredPayloadCount : 0
   const totalCaseCount = urlCaseCount + fieldCaseCount
 
   const firedCount = testCases.filter(tc => tc.result === 'fired').length
   const testedCount = testCases.filter(tc => tc.result !== 'untested').length
-  const canGenerate = (selectedParams.size > 0 || activeFields.length > 0) && selectedCategories.size > 0
+  const canGenerate = (urlCaseCount > 0 || fieldCaseCount > 0) && selectedCategories.size > 0
 
   return (
     <div className="space-y-6">
@@ -199,145 +204,162 @@ export default function XSSScanner() {
         <span>Only test applications you own or have explicit written permission to test.</span>
       </div>
 
-      {/* Step 1: URL parameters */}
+      {/* Step 1: Test targets */}
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Link2 size={15} className="text-gray-500" />
-          <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">1 — URL Parameters</h2>
-          <span className="text-xs text-gray-600 ml-1">optional</span>
-        </div>
+        <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">1 — Test Targets</h2>
 
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={rawURL}
-            onChange={e => setRawURL(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleParseURL()}
-            placeholder="https://staging.example.com/search?q=test&page=1"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-          />
           <button
-            onClick={handleParseURL}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+            onClick={() => setActiveMode(activeMode === 'url' ? null : 'url')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              urlEnabled
+                ? 'bg-emerald-700/30 border-emerald-600 text-emerald-300'
+                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'
+            }`}
           >
-            Parse
+            <Link2 size={14} />
+            URL <span className="text-xs font-normal opacity-70">(Reflected XSS)</span>
+          </button>
+          <button
+            onClick={() => setActiveMode(activeMode === 'field' ? null : 'field')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              fieldsEnabled
+                ? 'bg-sky-700/30 border-sky-600 text-sky-300'
+                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <FormInput size={14} />
+            Input <span className="text-xs font-normal opacity-70">(Stored XSS)</span>
           </button>
         </div>
-        {urlError && <p className="text-red-400 text-xs">{urlError}</p>}
-        {parsedBase && (
-          <p className="text-xs text-gray-500">
-            Base: <span className="text-gray-300 font-mono">{parsedBase}</span>
-          </p>
+
+        {urlEnabled && (
+          <div className="space-y-3 border-t border-gray-800 pt-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={rawURL}
+                onChange={e => setRawURL(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleParseURL()}
+                placeholder="https://staging.example.com/search?q=test&page=1"
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                onClick={handleParseURL}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Parse
+              </button>
+            </div>
+            {urlError && <p className="text-red-400 text-xs">{urlError}</p>}
+            {parsedBase && (
+              <p className="text-xs text-gray-500">
+                Base: <span className="text-gray-300 font-mono">{parsedBase}</span>
+              </p>
+            )}
+            {parsedBase && (
+              <div className="space-y-3">
+                {Object.keys(parsedParams).length === 0 && (
+                  <p className="text-sm text-gray-500">No query parameters detected. Add one manually below.</p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(parsedParams).map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-1">
+                      <button
+                        onClick={() => toggleParam(key)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono border transition-colors ${
+                          selectedParams.has(key)
+                            ? 'bg-emerald-700/30 border-emerald-600 text-emerald-300'
+                            : 'bg-gray-800 border-gray-700 text-gray-400'
+                        }`}
+                      >
+                        <span className="font-semibold">{key}</span>
+                        {val && <span className="text-gray-500">= {val.length > 12 ? val.slice(0, 12) + '…' : val}</span>}
+                      </button>
+                      <button onClick={() => removeParam(key)} className="text-gray-600 hover:text-red-400 transition-colors" title="Remove">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customParam}
+                    onChange={e => setCustomParam(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCustomParam()}
+                    placeholder="Add custom parameter name…"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    onClick={addCustomParam}
+                    className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Add
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
-        {parsedBase && (
-          <div className="space-y-3 pt-1">
-            {Object.keys(parsedParams).length === 0 && (
-              <p className="text-sm text-gray-500">No query parameters detected. Add one manually below.</p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(parsedParams).map(([key, val]) => (
-                <div key={key} className="flex items-center gap-1">
+        {fieldsEnabled && (
+          <div className={`space-y-3 border-t border-gray-800 pt-4 ${urlEnabled ? 'mt-0' : ''}`}>
+            <p className="text-xs text-gray-500">Name the form fields you want to test for stored or DOM-based XSS.</p>
+            <div className="space-y-2">
+              {fields.map((field, i) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 w-5 shrink-0 text-right">{i + 1}.</span>
+                  <input
+                    type="text"
+                    value={field.name}
+                    onChange={e => updateField(field.id, e.target.value)}
+                    placeholder="Field name…"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                  />
                   <button
-                    onClick={() => toggleParam(key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono border transition-colors ${
-                      selectedParams.has(key)
-                        ? 'bg-emerald-700/30 border-emerald-600 text-emerald-300'
-                        : 'bg-gray-800 border-gray-700 text-gray-400'
-                    }`}
+                    onClick={() => removeField(field.id)}
+                    disabled={fields.length === 1}
+                    className="p-2 text-gray-600 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="Remove field"
                   >
-                    <span className="font-semibold">{key}</span>
-                    {val && <span className="text-gray-500">= {val.length > 12 ? val.slice(0, 12) + '…' : val}</span>}
-                  </button>
-                  <button onClick={() => removeParam(key)} className="text-gray-600 hover:text-red-400 transition-colors" title="Remove">
-                    <Trash2 size={12} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customParam}
-                onChange={e => setCustomParam(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addCustomParam()}
-                placeholder="Add custom parameter name…"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={addCustomParam}
-                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm rounded-lg transition-colors flex items-center gap-1"
-              >
-                <Plus size={14} /> Add
-              </button>
+            <button onClick={addField} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors">
+              <Plus size={13} /> Add field
+            </button>
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-600">Suggestions</p>
+              <div className="flex flex-wrap gap-1.5">
+                {FIELD_SUGGESTIONS.map(s => {
+                  const used = fields.some(f => f.name.toLowerCase() === s.toLowerCase())
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => addSuggestion(s)}
+                      disabled={used}
+                      className={`px-2.5 py-1 rounded text-xs border transition-colors ${
+                        used
+                          ? 'bg-gray-800 border-gray-700 text-gray-600 cursor-default'
+                          : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-sky-600 hover:text-sky-400'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         )}
       </section>
 
-      {/* Step 2: Input fields */}
+      {/* Step 2: Payload categories */}
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <FormInput size={15} className="text-gray-500" />
-          <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">2 — Input Fields</h2>
-          <span className="text-xs text-gray-600 ml-1">optional</span>
-        </div>
-        <p className="text-xs text-gray-500">Name the form fields you want to test for stored or DOM-based XSS.</p>
-
-        <div className="space-y-2">
-          {fields.map((field, i) => (
-            <div key={field.id} className="flex items-center gap-2">
-              <span className="text-xs text-gray-600 w-5 shrink-0 text-right">{i + 1}.</span>
-              <input
-                type="text"
-                value={field.name}
-                onChange={e => updateField(field.id, e.target.value)}
-                placeholder="Field name…"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={() => removeField(field.id)}
-                disabled={fields.length === 1}
-                className="p-2 text-gray-600 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Remove field"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={addField} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors">
-          <Plus size={13} /> Add field
-        </button>
-
-        <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Suggestions</p>
-          <div className="flex flex-wrap gap-1.5">
-            {FIELD_SUGGESTIONS.map(s => {
-              const used = fields.some(f => f.name.toLowerCase() === s.toLowerCase())
-              return (
-                <button
-                  key={s}
-                  onClick={() => addSuggestion(s)}
-                  disabled={used}
-                  className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                    used
-                      ? 'bg-gray-800 border-gray-700 text-gray-600 cursor-default'
-                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-emerald-600 hover:text-emerald-400'
-                  }`}
-                >
-                  {s}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Step 3: Payload categories */}
-      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">3 — Payload Categories</h2>
+        <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">2 — Payload Categories</h2>
         <div className="flex flex-wrap gap-2">
           {ALL_CATEGORIES.map(cat => (
             <button
@@ -375,7 +397,7 @@ export default function XSSScanner() {
       {testCases.length > 0 && (
         <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">4 — Test Cases</h2>
+            <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">3 — Test Cases</h2>
             <div className="flex gap-3 text-xs text-gray-400">
               <span>{testedCount}/{testCases.length} tested</span>
               {firedCount > 0 && <span className="text-red-400 font-semibold">{firedCount} fired!</span>}
