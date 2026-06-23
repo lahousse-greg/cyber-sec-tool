@@ -55,7 +55,7 @@ Set the inject value to a unique probe string (default: `HPP_INJECTED`). The sca
 
 ### Features
 
-- **SQLi Scanner** — injects SQL payloads into query parameters across 6 technique categories, generates ready-to-open test URLs, and lets you mark each result as Vulnerable / Not vulnerable / Error.
+- **SQLi Scanner** — define the input fields you want to test (e.g. username, search box, comment), select payload categories, and get a copy-paste checklist of payloads to submit manually through your application's forms. Mark each result as Vulnerable / Not vulnerable / Error.
 
 ### Payload categories
 
@@ -70,9 +70,11 @@ Set the inject value to a unique probe string (default: `HPP_INJECTED`). The sca
 
 ### How it works
 
-Because the tool is client-side, it cannot read your app's HTTP responses. Instead, it constructs payload-injected URLs that you open in a browser tab and inspect manually. Each test case includes a **"what to observe"** note — typically a DB error message, a content difference between true/false conditions, or a time delay.
+SQL injection primarily occurs through form inputs, not URL parameters. The scanner generates a checklist of payload × field combinations. For each test case, copy the payload, paste it into the named field in your application, submit the form, and observe the response.
 
-For time-based payloads: open the test URL, note the response time, then compare against a baseline request with the original parameter value.
+Each test case includes a **"what to observe"** note — a DB error message, a content difference between true/false conditions, or a measured time delay depending on the technique.
+
+For time-based payloads: submit the payload, note the response time, and compare it against a baseline submission with a benign value.
 
 ## Stack
 
