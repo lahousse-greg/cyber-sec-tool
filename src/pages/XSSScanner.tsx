@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
-import { parseURL, buildTestURL } from '../utils/urlParser'
+import { buildTestURL } from '../utils/urlParser'
 import { XSS_PAYLOADS, CATEGORY_LABELS, CATEGORY_COLORS, type PayloadCategory, type XSSPayload } from '../data/xssPayloads'
 import { ExternalLink, Copy, CheckCheck, ChevronDown, ChevronUp, Plus, Trash2, AlertTriangle, Link2, FormInput } from 'lucide-react'
+import { useBrowsers } from '../hooks/useBrowsers'
+import URLParamSelector from '../components/URLParamSelector'
 
 type TestResult = 'untested' | 'fired' | 'not-fired' | 'error'
 
@@ -44,13 +46,10 @@ let fieldCounter = 0
 const newField = (name = ''): TargetField => ({ id: `field-${++fieldCounter}`, name })
 
 export default function XSSScanner() {
-  // URL targets
-  const [rawURL, setRawURL] = useState('')
+  // URL targets (synced from URLParamSelector via onChange)
   const [parsedBase, setParsedBase] = useState('')
   const [parsedParams, setParsedParams] = useState<Record<string, string>>({})
-  const [urlError, setURLError] = useState('')
   const [selectedParams, setSelectedParams] = useState<Set<string>>(new Set())
-  const [customParam, setCustomParam] = useState('')
 
   // Field targets
   const [fields, setFields] = useState<TargetField[]>([newField()])
@@ -66,43 +65,15 @@ export default function XSSScanner() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // URL actions
-  const handleParseURL = useCallback(() => {
-    const result = parseURL(rawURL)
-    if (!result.isValid) {
-      setURLError(result.error ?? 'Invalid URL')
-      setParsedBase('')
-      setParsedParams({})
-      setSelectedParams(new Set())
-      return
-    }
-    setURLError('')
-    setParsedBase(result.base)
-    setParsedParams(result.params)
-    setSelectedParams(new Set(Object.keys(result.params)))
+  // Browser
+  const { browsers, selected: selectedBrowser, setSelected: setSelectedBrowser, apiAvailable, openInBrowser } = useBrowsers()
+
+  const handleURLChange = useCallback((base: string, params: Record<string, string>, selected: Set<string>) => {
+    setParsedBase(base)
+    setParsedParams(params)
+    setSelectedParams(selected)
     setTestCases([])
-  }, [rawURL])
-
-  const toggleParam = (param: string) => {
-    setSelectedParams(prev => {
-      const next = new Set(prev)
-      next.has(param) ? next.delete(param) : next.add(param)
-      return next
-    })
-  }
-
-  const addCustomParam = () => {
-    const trimmed = customParam.trim()
-    if (!trimmed || trimmed in parsedParams) return
-    setParsedParams(prev => ({ ...prev, [trimmed]: '' }))
-    setSelectedParams(prev => new Set([...prev, trimmed]))
-    setCustomParam('')
-  }
-
-  const removeParam = (param: string) => {
-    setParsedParams(prev => { const next = { ...prev }; delete next[param]; return next })
-    setSelectedParams(prev => { const next = new Set(prev); next.delete(param); return next })
-  }
+  }, [])
 
   // Field actions
   const updateField = (id: string, name: string) => {
@@ -122,7 +93,6 @@ export default function XSSScanner() {
     else setFields(prev => [...prev, newField(name)])
   }
 
-  // Shared actions
   const toggleCategory = (cat: PayloadCategory) => {
     setSelectedCategories(prev => {
       const next = new Set(prev)
@@ -234,77 +204,19 @@ export default function XSSScanner() {
         </div>
 
         {urlEnabled && (
-          <div className="space-y-3 border-t border-gray-800 pt-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={rawURL}
-                onChange={e => setRawURL(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleParseURL()}
-                placeholder="https://staging.example.com/search?q=test&page=1"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={handleParseURL}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Parse
-              </button>
-            </div>
-            {urlError && <p className="text-red-400 text-xs">{urlError}</p>}
-            {parsedBase && (
-              <p className="text-xs text-gray-500">
-                Base: <span className="text-gray-300 font-mono">{parsedBase}</span>
-              </p>
-            )}
-            {parsedBase && (
-              <div className="space-y-3">
-                {Object.keys(parsedParams).length === 0 && (
-                  <p className="text-sm text-gray-500">No query parameters detected. Add one manually below.</p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(parsedParams).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-1">
-                      <button
-                        onClick={() => toggleParam(key)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono border transition-colors ${
-                          selectedParams.has(key)
-                            ? 'bg-emerald-700/30 border-emerald-600 text-emerald-300'
-                            : 'bg-gray-800 border-gray-700 text-gray-400'
-                        }`}
-                      >
-                        <span className="font-semibold">{key}</span>
-                        {val && <span className="text-gray-500">= {val.length > 12 ? val.slice(0, 12) + '…' : val}</span>}
-                      </button>
-                      <button onClick={() => removeParam(key)} className="text-gray-600 hover:text-red-400 transition-colors" title="Remove">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customParam}
-                    onChange={e => setCustomParam(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addCustomParam()}
-                    placeholder="Add custom parameter name…"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    onClick={addCustomParam}
-                    className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm rounded-lg transition-colors flex items-center gap-1"
-                  >
-                    <Plus size={14} /> Add
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="border-t border-gray-800 pt-4">
+            <URLParamSelector
+              onChange={handleURLChange}
+              browsers={browsers}
+              selectedBrowser={selectedBrowser}
+              onBrowserChange={setSelectedBrowser}
+              apiAvailable={apiAvailable}
+            />
           </div>
         )}
 
         {fieldsEnabled && (
-          <div className={`space-y-3 border-t border-gray-800 pt-4 ${urlEnabled ? 'mt-0' : ''}`}>
+          <div className="space-y-3 border-t border-gray-800 pt-4">
             <p className="text-xs text-gray-500">Name the form fields you want to test for stored or DOM-based XSS.</p>
             <div className="space-y-2">
               {fields.map((field, i) => (
@@ -393,7 +305,7 @@ export default function XSSScanner() {
         </button>
       </section>
 
-      {/* Step 4: Results */}
+      {/* Step 3: Results */}
       {testCases.length > 0 && (
         <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -434,15 +346,13 @@ export default function XSSScanner() {
                         >
                           {copiedId === tc.id + '-url' ? <CheckCheck size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         </button>
-                        <a
-                          href={tc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => openInBrowser(tc.url)}
                           className="p-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
-                          title="Open in new tab"
+                          title="Open in browser"
                         >
                           <ExternalLink size={14} />
-                        </a>
+                        </button>
                       </>
                     ) : (
                       <button

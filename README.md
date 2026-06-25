@@ -8,7 +8,7 @@ A client-side SPA for webapp developers to run basic security tests against thei
 
 ### Features
 
-- **XSS Scanner** — paste a target URL, auto-detect query parameters, select payload categories, and generate ready-to-test URLs. Each test case can be opened in a new tab and marked as Fired / Not Fired / Error.
+- **XSS Scanner** — two test modes: **URL** (reflected XSS) auto-detects query parameters and generates payload-injected URLs; **Input** (stored XSS) generates payloads to paste into named form fields. In URL mode, pick from your locally installed browsers and open each test case with one click.
 - **Payload Library** — 29 XSS payloads across 6 categories, searchable and filterable, each with an inline description of injection context and how the vector works.
 
 ### Payload categories
@@ -24,17 +24,17 @@ A client-side SPA for webapp developers to run basic security tests against thei
 
 ### How it works
 
-Because the tool is purely client-side, it cannot read HTTP responses from cross-origin targets. Instead, it constructs payload-injected URLs that you open in your browser and observe directly — an alert box (or console output) confirms the payload executed.
+Because the tool is purely client-side, it cannot read HTTP responses from cross-origin targets. Instead, it constructs payload-injected URLs or generates copy-paste payloads, and you observe the results directly.
 
-For reflected XSS: test URLs inject a payload into one query parameter at a time while keeping the rest unchanged.
+**URL mode (reflected XSS):** paste a URL, select which query parameters to test, pick a browser from your locally installed ones, and click open on each test case. The browser launches with the payload-injected URL already loaded — an alert box or console output confirms execution.
 
-For stored XSS: copy individual payloads from the library and submit them through the application's forms or APIs manually, then revisit the page where the data is rendered.
+**Input mode (stored XSS):** name the form fields you want to test and generate a payload checklist. Copy each payload, paste it into the named field in your application, submit the form, and revisit the page where the data renders to check for execution.
 
 ## v2.0 — HTTP Parameter Pollution Scanner
 
 ### Features
 
-- **HPP Scanner** — tests how your application handles duplicate query parameters across 6 pollution strategies. Set a recognisable inject value, generate test URLs, open each in a browser, and mark whether the injected value was used by the application.
+- **HPP Scanner** — tests how your application handles duplicate query parameters across 6 pollution strategies. Set a recognisable inject value, select a local browser, generate test URLs, and open each with one click to mark whether the injected value was used by the application.
 
 ### Pollution strategies
 
@@ -49,7 +49,7 @@ For stored XSS: copy individual payloads from the library and submit them throug
 
 ### How it works
 
-Set the inject value to a unique probe string (default: `HPP_INJECTED`). The scanner generates one test URL per parameter × strategy combination. Open each URL in your app and check whether the injected value appears in the response, logs, or application behaviour — if it does, that parameter is vulnerable to pollution for that strategy.
+Set the inject value to a unique probe string (default: `HPP_INJECTED`). The scanner generates one test URL per parameter × strategy combination. Select a local browser, then open each test URL with one click — check whether the injected value appears in the response, logs, or application behaviour. If it does, that parameter is vulnerable to pollution for that strategy.
 
 ## v3.0 — SQL Injection Scanner
 
@@ -92,9 +92,8 @@ npm run dev
 ```bash
 npm run build   # production build → dist/
 npm run preview # preview the production build locally
+npm start       # build + preview in one step
 ```
 
-```bash
-npm run start # runs both build and preview
-```
+> **Browser detection** — the scanner detects your locally installed browsers and lets you open test URLs in a specific one. This feature is served by the Vite dev/preview server and works with both `npm run dev` and `npm start`.
 
