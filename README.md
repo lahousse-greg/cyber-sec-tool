@@ -93,3 +93,8 @@ npm run dev
 npm run build   # production build → dist/
 npm run preview # preview the production build locally
 ```
+
+```bash
+npm run start # runs both build and preview
+```
+
