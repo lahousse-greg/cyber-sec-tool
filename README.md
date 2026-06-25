@@ -84,11 +84,12 @@ For time-based payloads: submit the payload, note the response time, and compare
 
 ## Getting started
 
+Local developement
 ```bash
 npm install
 npm run dev
 ```
-
+Production build
 ```bash
 npm run build   # production build → dist/
 npm run preview # preview the production build locally
