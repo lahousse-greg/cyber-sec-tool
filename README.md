@@ -4,7 +4,7 @@ A client-side SPA for webapp developers to run basic security tests against thei
 
 > **Authorization notice:** Only test applications you own or have explicit written permission to test.
 
-## v1.0 — XSS Scanner
+## XSS Scanner
 
 ### Features
 
@@ -30,7 +30,7 @@ Because the tool is purely client-side, it cannot read HTTP responses from cross
 
 **Input mode (stored XSS):** name the form fields you want to test and generate a payload checklist. Copy each payload, paste it into the named field in your application, submit the form, and revisit the page where the data renders to check for execution.
 
-## v2.0 — HTTP Parameter Pollution Scanner
+## HTTP Parameter Pollution Scanner
 
 ### Features
 
@@ -51,7 +51,7 @@ Because the tool is purely client-side, it cannot read HTTP responses from cross
 
 Set the inject value to a unique probe string (default: `HPP_INJECTED`). The scanner generates one test URL per parameter × strategy combination. Select a local browser, then open each test URL with one click — check whether the injected value appears in the response, logs, or application behaviour. If it does, that parameter is vulnerable to pollution for that strategy.
 
-## v3.0 — SQL Injection Scanner
+## SQL Injection Scanner
 
 ### Features
 
