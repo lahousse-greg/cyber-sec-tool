@@ -92,6 +92,9 @@ npm run dev
 ```bash
 npm run build   # production build → dist/
 npm run preview # preview the production build locally
+```
+OR
+```bash
 npm start       # build + preview in one step
 ```
 
