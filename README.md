@@ -96,8 +96,8 @@ npm run preview # preview the production build locally
 ```
 OR
 ```bash
-npm start       # build + preview in one step
+npm run prod       # build + preview in one step
 ```
 
-> **Browser detection** — the scanner detects your locally installed browsers and lets you open test URLs in a specific one. This feature is served by the Vite dev/preview server and works with both `npm run dev` and `npm start`.
+> **Browser detection** — the scanner detects your locally installed browsers and lets you open test URLs in a specific one. This feature is served by the Vite dev/preview server and works with both `npm run dev` and `npm run prod`.
 
