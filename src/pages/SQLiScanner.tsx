@@ -5,20 +5,18 @@ import {
   SQLI_CATEGORY_COLORS,
   type SQLiCategory,
 } from '../data/sqliPayloads'
-import { Copy, CheckCheck, ChevronDown, ChevronUp, Plus, Trash2, AlertTriangle, Info } from 'lucide-react'
+import { Copy, CheckCheck, ChevronDown, ChevronUp, AlertTriangle, Info, Play, Loader2 } from 'lucide-react'
+import { useBrowsers } from '../hooks/useBrowsers'
+import FieldSelector, { type TargetField } from '../components/FieldSelector'
 
 type TestResult = 'untested' | 'vulnerable' | 'not-vulnerable' | 'error'
-
-interface TargetField {
-  id: string
-  name: string
-}
 
 interface TestCase {
   id: string
   field: TargetField
   payload: typeof SQLI_PAYLOADS[number]
   result: TestResult
+  automationTarget?: { url: string; selector: string }
 }
 
 const RESULT_STYLES: Record<TestResult, string> = {
@@ -39,35 +37,16 @@ const ALL_CATEGORIES: SQLiCategory[] = [
 
 const FIELD_SUGGESTIONS = ['Username', 'Password', 'Search', 'Email', 'Product ID', 'Order ID', 'Comment']
 
-let fieldCounter = 0
-const newField = (name = ''): TargetField => ({ id: `field-${++fieldCounter}`, name })
-
 export default function SQLiScanner() {
-  const [fields, setFields] = useState<TargetField[]>([newField()])
+  const [activeFields, setActiveFields] = useState<TargetField[]>([])
   const [selectedCategories, setSelectedCategories] = useState<Set<SQLiCategory>>(new Set(ALL_CATEGORIES))
   const [testCases, setTestCases] = useState<TestCase[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [injectingId, setInjectingId] = useState<string | null>(null)
+  const [injectedIds, setInjectedIds] = useState<Set<string>>(new Set())
 
-  const updateField = (id: string, name: string) => {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, name } : f))
-  }
-
-  const addField = () => setFields(prev => [...prev, newField()])
-
-  const removeField = (id: string) => {
-    setFields(prev => prev.length > 1 ? prev.filter(f => f.id !== id) : prev)
-  }
-
-  const addSuggestion = (name: string) => {
-    if (fields.some(f => f.name.toLowerCase() === name.toLowerCase())) return
-    const blank = fields.find(f => f.name.trim() === '')
-    if (blank) {
-      updateField(blank.id, name)
-    } else {
-      setFields(prev => [...prev, newField(name)])
-    }
-  }
+  const { apiAvailable } = useBrowsers()
 
   const toggleCategory = (cat: SQLiCategory) => {
     setSelectedCategories(prev => {
@@ -78,7 +57,6 @@ export default function SQLiScanner() {
   }
 
   const generateTestCases = () => {
-    const activeFields = fields.filter(f => f.name.trim() !== '')
     if (activeFields.length === 0 || selectedCategories.size === 0) return
 
     const activePayloads = SQLI_PAYLOADS.filter(p => selectedCategories.has(p.category))
@@ -91,6 +69,7 @@ export default function SQLiScanner() {
           field,
           payload,
           result: 'untested',
+          automationTarget: field.automationTarget,
         })
       })
     })
@@ -103,13 +82,28 @@ export default function SQLiScanner() {
     setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, result } : tc))
   }
 
+  const injectPayload = async (tc: TestCase) => {
+    if (!tc.automationTarget) return
+    setInjectingId(tc.id)
+    try {
+      const res = await fetch('/api/inject-field', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: tc.automationTarget.url, selector: tc.automationTarget.selector, payload: tc.payload.payload }),
+      })
+      const data = await res.json() as { ok: boolean }
+      if (data.ok) setInjectedIds(prev => new Set(prev).add(tc.id))
+    } finally {
+      setInjectingId(null)
+    }
+  }
+
   const copyPayload = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 1500)
   }
 
-  const activeFields = fields.filter(f => f.name.trim() !== '')
   const activePayloadCount = SQLI_PAYLOADS.filter(p => selectedCategories.has(p.category)).length
   const vulnerableCount = testCases.filter(tc => tc.result === 'vulnerable').length
   const testedCount = testCases.filter(tc => tc.result !== 'untested').length
@@ -138,60 +132,12 @@ export default function SQLiScanner() {
       {/* Step 1: Target fields */}
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
         <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">1 — Target Input Fields</h2>
-        <p className="text-xs text-gray-500">Name each field you want to test (e.g. "Username", "Search box", "Order ID").</p>
-
-        <div className="space-y-2">
-          {fields.map((field, i) => (
-            <div key={field.id} className="flex items-center gap-2">
-              <span className="text-xs text-gray-600 w-5 shrink-0 text-right">{i + 1}.</span>
-              <input
-                type="text"
-                value={field.name}
-                onChange={e => updateField(field.id, e.target.value)}
-                placeholder="Field name…"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={() => removeField(field.id)}
-                disabled={fields.length === 1}
-                className="p-2 text-gray-600 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Remove field"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={addField}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-        >
-          <Plus size={13} /> Add field
-        </button>
-
-        <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Suggestions</p>
-          <div className="flex flex-wrap gap-1.5">
-            {FIELD_SUGGESTIONS.map(s => {
-              const used = fields.some(f => f.name.toLowerCase() === s.toLowerCase())
-              return (
-                <button
-                  key={s}
-                  onClick={() => addSuggestion(s)}
-                  disabled={used}
-                  className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                    used
-                      ? 'bg-gray-800 border-gray-700 text-gray-600 cursor-default'
-                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-emerald-600 hover:text-emerald-400'
-                  }`}
-                >
-                  {s}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <FieldSelector
+          suggestions={FIELD_SUGGESTIONS}
+          description='Name each field you want to test (e.g. "Username", "Search box", "Order ID").'
+          onChange={setActiveFields}
+          apiAvailable={apiAvailable}
+        />
       </section>
 
       {/* Step 2: Categories */}
@@ -269,6 +215,21 @@ export default function SQLiScanner() {
                     >
                       {copiedId === tc.id + '-payload' ? <CheckCheck size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     </button>
+                    {tc.automationTarget && (
+                      <button
+                        onClick={() => injectPayload(tc)}
+                        disabled={injectingId === tc.id}
+                        className="p-1.5 text-gray-500 hover:text-sky-400 disabled:opacity-50 transition-colors"
+                        title="Inject payload into field"
+                      >
+                        {injectingId === tc.id
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : injectedIds.has(tc.id)
+                            ? <CheckCheck size={14} className="text-sky-400" />
+                            : <Play size={14} />
+                        }
+                      </button>
+                    )}
                     <button
                       onClick={() => setExpandedId(expandedId === tc.id ? null : tc.id)}
                       className="p-1.5 text-gray-500 hover:text-gray-200 transition-colors"

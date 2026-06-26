@@ -28,7 +28,9 @@ Because the tool is purely client-side, it cannot read HTTP responses from cross
 
 **URL mode (reflected XSS):** paste a URL, select which query parameters to test, pick a browser from your locally installed ones, and click open on each test case. The browser launches with the payload-injected URL already loaded — an alert box or console output confirms execution.
 
-**Input mode (stored XSS):** name the form fields you want to test and generate a payload checklist. Copy each payload, paste it into the named field in your application, submit the form, and revisit the page where the data renders to check for execution.
+**Input mode (stored XSS) — manual:** name the form fields you want to test and generate a payload checklist. Copy each payload, paste it into the named field in your application, submit the form, and revisit the page where the data renders to check for execution.
+
+**Input mode (stored XSS) — automated:** paste the URL of the page containing the form. The tool opens it in a headless browser, waits for the DOM to load, and detects all text inputs and textareas automatically. Select the field you want to target, then hit the inject button (▶) on any test case — the tool opens a visible browser, fills the field with the payload, and submits the form so you can observe the result directly. Works with `localhost` and any staging URL.
 
 ## HTTP Parameter Pollution Scanner
 
@@ -55,7 +57,7 @@ Set the inject value to a unique probe string (default: `HPP_INJECTED`). The sca
 
 ### Features
 
-- **SQLi Scanner** — define the input fields you want to test (e.g. username, search box, comment), select payload categories, and get a copy-paste checklist of payloads to submit manually through your application's forms. Mark each result as Vulnerable / Not vulnerable / Error.
+- **SQLi Scanner** — define the input fields you want to test (e.g. username, search box, comment), select payload categories, and get a checklist of payloads to submit through your application's forms. Supports both manual copy-paste and automated injection via the same DOM-scanning flow as the XSS scanner. Mark each result as Vulnerable / Not vulnerable / Error.
 
 ### Payload categories
 
@@ -70,9 +72,11 @@ Set the inject value to a unique probe string (default: `HPP_INJECTED`). The sca
 
 ### How it works
 
-SQL injection primarily occurs through form inputs, not URL parameters. The scanner generates a checklist of payload × field combinations. For each test case, copy the payload, paste it into the named field in your application, submit the form, and observe the response.
+SQL injection primarily occurs through form inputs, not URL parameters. The scanner generates a checklist of payload × field combinations.
 
-Each test case includes a **"what to observe"** note — a DB error message, a content difference between true/false conditions, or a measured time delay depending on the technique.
+**Manual:** copy the payload, paste it into the named field in your application, submit the form, and observe the response. Each test case includes a **"what to observe"** note — a DB error message, a content difference between true/false conditions, or a measured time delay depending on the technique.
+
+**Automated:** paste the URL of the target page, let the tool scan the DOM for input fields, select the field to target, and use the inject button (▶) on each test case to have Playwright fill and submit the form automatically.
 
 For time-based payloads: submit the payload, note the response time, and compare it against a baseline submission with a benign value.
 
@@ -81,6 +85,7 @@ For time-based payloads: submit the payload, note the response time, and compare
 - React 18 + Vite 8 + TypeScript
 - Tailwind CSS
 - React Router v6
+- Playwright (DOM scanning + automated field injection)
 
 ## Getting started
 
@@ -100,4 +105,6 @@ npm start       # build + preview in one step
 ```
 
 > **Browser detection** — the scanner detects your locally installed browsers and lets you open test URLs in a specific one. This feature is served by the Vite dev/preview server and works with both `npm run dev` and `npm start`.
+
+> **Automated input mode** — DOM scanning and field injection run via Playwright and require Google Chrome to be installed. The tool uses your system Chrome (no separate browser download). Both `localhost` and remote staging URLs are supported.
 
